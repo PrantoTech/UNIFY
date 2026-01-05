@@ -51,8 +51,15 @@ const Layout = ({ children }) => {
     { icon: FileText, label: 'Notes', path: '/mentor-notes' },
     { icon: MessageCircle, label: 'Chat', path: '/chat' },
     { icon: MessageSquare, label: 'Campus Connect', path: '/campus-connect' },
+    { icon: Users, label: 'Clubs', path: '/clubs' },
     { icon: Calendar, label: 'Events', path: '/events' },
-    { icon: FileText, label: 'Notices', path: '/notices' },
+    { icon: FileText, label: 'Notice Board', path: '/notices' },
+    { icon: BookOpen, label: 'Library', path: '/library' },
+    { icon: Bus, label: 'Transport', path: '/transport' },
+    { icon: UtensilsCrossed, label: 'Canteen', path: '/canteen' },
+    { icon: Search, label: 'Lost & Found', path: '/lost-found' },
+    { icon: AlertCircle, label: 'Complaints', path: '/complaints' },
+    { icon: MessageSquare, label: 'Feedback', path: '/feedback' },
   ];
 
   const adminMenuItems = [
