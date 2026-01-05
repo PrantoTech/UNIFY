@@ -1,0 +1,159 @@
+{
+  "identity": {
+    "name": "UNIFY",
+    "persona": "E1 - The Anti-AI Designer",
+    "vibe": "Modern Academic Fusion",
+    "archetype": "Swiss High-Contrast x Electric Innovation",
+    "description": "A smart campus platform that blends the authority of academia with the speed of Silicon Valley. Clean, structured, yet vibrant and alive."
+  },
+  "typography": {
+    "fonts": {
+      "heading": "Outfit",
+      "body": "Plus Jakarta Sans",
+      "mono": "JetBrains Mono"
+    },
+    "weights": {
+      "heading": "font-bold",
+      "subheading": "font-medium",
+      "body": "font-normal"
+    },
+    "rules": [
+      "Headings (>32px) must use tracking-tight",
+      "Overlines must be uppercase, text-xs, tracking-widest",
+      "Never use Inter for headings",
+      "Use 'Outfit' for all main titles to give a friendly tech feel"
+    ]
+  },
+  "colors": {
+    "palette": {
+      "light": {
+        "background": "210 40% 98%",
+        "foreground": "222 47% 11%",
+        "card": "0 0% 100%",
+        "card_foreground": "222 47% 11%",
+        "popover": "0 0% 100%",
+        "popover_foreground": "222 47% 11%",
+        "primary": "221 83% 53%",
+        "primary_foreground": "210 40% 98%",
+        "secondary": "210 40% 96.1%",
+        "secondary_foreground": "222 47% 11%",
+        "muted": "210 40% 96.1%",
+        "muted_foreground": "215 16% 47%",
+        "accent": "262 83% 58%",
+        "accent_foreground": "210 40% 98%",
+        "destructive": "0 84.2% 60.2%",
+        "destructive_foreground": "210 40% 98%",
+        "border": "214.3 31.8% 91.4%",
+        "input": "214.3 31.8% 91.4%",
+        "ring": "221 83% 53%"
+      },
+      "dark": {
+        "background": "222 47% 11%",
+        "foreground": "210 40% 98%",
+        "card": "222 47% 13%",
+        "card_foreground": "210 40% 98%",
+        "popover": "222 47% 11%",
+        "popover_foreground": "210 40% 98%",
+        "primary": "217 91% 60%",
+        "primary_foreground": "222 47% 11%",
+        "secondary": "217 19% 27%",
+        "secondary_foreground": "210 40% 98%",
+        "muted": "217 19% 27%",
+        "muted_foreground": "215 20% 65%",
+        "accent": "262 83% 58%",
+        "accent_foreground": "210 40% 98%",
+        "destructive": "0 62.8% 30.6%",
+        "destructive_foreground": "210 40% 98%",
+        "border": "217 19% 27%",
+        "input": "217 19% 27%",
+        "ring": "224 76% 48%"
+      }
+    },
+    "usage": [
+      "Primary Color (Electric Blue): Use for main CTAs and active states.",
+      "Accent Color (Violet): Use for 'Smart' features (AI, Analytics, Mentoring).",
+      "Background: Avoid pure black in dark mode; use Deep Navy/Slate.",
+      "Gradients: Use subtle noise textures over solid colors instead of linear gradients."
+    ]
+  },
+  "layout": {
+    "spacing": {
+      "base": "Use 2-3x more padding than standard.",
+      "container": "p-6 md:p-12 lg:p-16",
+      "section_gap": "gap-8 md:gap-12"
+    },
+    "grids": {
+      "dashboard": "Control Room Grid: grid-cols-1 md:grid-cols-3 lg:grid-cols-4. Dense, no gaps.",
+      "social": "Tetris Grid: grid-cols-1 md:grid-cols-8 lg:grid-cols-12. Asymmetric, wide gaps.",
+      "marketing": "Swiss Grid: Overlapping elements, whitespace dominance."
+    },
+    "radius": {
+      "default": "rounded-xl",
+      "button": "rounded-full (Pill shape)",
+      "card": "rounded-2xl"
+    }
+  },
+  "components": {
+    "cards": {
+      "style": "Glassmorphism or Flat with 1px Border",
+      "rule": "In Dark Mode, use bg-white/5 with backdrop-blur-md and border-white/10. In Light Mode, use white with shadow-sm and border-gray-100."
+    },
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:opacity-90 shadow-lg hover:shadow-primary/25 transition-all duration-300",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+      "ghost": "hover:bg-accent/10 hover:text-accent"
+    },
+    "inputs": {
+      "style": "bg-background border-input focus:ring-2 focus:ring-primary/20 transition-all"
+    },
+    "navigation": {
+      "sidebar": "Fixed left, glassmorphism effect, icon-heavy.",
+      "topbar": "Sticky, backdrop-blur-xl, minimal."
+    }
+  },
+  "visual_enhancers": {
+    "textures": "Use subtle grain/noise on dark backgrounds to prevent banding.",
+    "shadows": "Use colored shadows (shadow-primary/20) for primary actions.",
+    "borders": "Use 'Tracing Beam' effect for high-value cards (Mentoring, Premium features).",
+    "motion": "Use framer-motion for all page transitions. Stagger children for lists."
+  },
+  "images": {
+    "login_hero": {
+      "url": "https://images.unsplash.com/photo-1741638511380-0ba689024c59",
+      "alt": "Modern Smart Campus Building",
+      "usage": "Full height split screen on login page"
+    },
+    "student_dashboard_banner": {
+      "url": "https://images.unsplash.com/photo-1758270705172-07b53627dfcb",
+      "alt": "Students collaborating",
+      "usage": "Hero section of student dashboard"
+    },
+    "mentor_placeholder": {
+      "url": "https://images.unsplash.com/photo-1758685848147-e1e149bf2603",
+      "alt": "Professional Mentor",
+      "usage": "Default image for mentor profiles"
+    },
+    "library_utility": {
+      "url": "https://images.unsplash.com/photo-1741638511412-d1657179c505",
+      "alt": "Campus Walkway",
+      "usage": "Background for utility/services section"
+    }
+  },
+  "tech_stack": {
+    "icons": "lucide-react",
+    "charts": "recharts (via shadcn/ui charts)",
+    "motion": "framer-motion",
+    "toast": "sonner",
+    "date": "date-fns"
+  },
+  "universal_guidelines": [
+    "Do not use 'Inter' for headings.",
+    "Do not use Teal (#1B93A4) for dashboards.",
+    "Do not use Space Grotesk font.",
+    "Always use 'data-testid' for interactive elements.",
+    "Ensure Dark/Light mode toggle works perfectly.",
+    "Use 'Outfit' font for headings and 'Plus Jakarta Sans' for body.",
+    "Implement 'Glassmorphism' for overlays and sticky headers.",
+    "Use 'Sonner' for all toast notifications."
+  ]
+}
