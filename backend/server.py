@@ -21,6 +21,7 @@ from github_crawler import GitHubCrawler
 from linkedin_crawler import LinkedInCrawler
 from ai_detector import AIContentDetector
 from progress_tracker import ProgressTracker
+# from gemini_recommender import GeminiRecommender  # Temporarily disabled due to Python 3.14 protobuf compatibility
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -106,6 +107,7 @@ github_crawler = GitHubCrawler(github_token=os.environ.get('GITHUB_TOKEN'))
 linkedin_crawler = LinkedInCrawler(api_key=os.environ.get('LINKEDIN_API_KEY'))
 ai_detector = AIContentDetector(db)
 progress_tracker = None  # Will be initialized after db is ready
+gemini_recommender = None  # Will be initialized after db is ready
 
 # ==================== MODELS ====================
 
@@ -390,11 +392,20 @@ async def seed_test_data():
 @app.on_event("startup")
 async def startup_event():
     """Initialize app on startup"""
-    global progress_tracker
+    global progress_tracker, gemini_recommender
     await seed_test_data()
-    # Initialize progress tracker
-    progress_tracker = ProgressTracker(db, github_crawler, ai_detector)
-    print("✓ Advanced analytics modules initialized")
+    # Initialize Gemini recommender first
+    try:
+        # GeminiRecommender temporarily disabled due to Python 3.14 protobuf compatibility
+        # gemini_recommender = GeminiRecommender(api_key=os.environ.get('GEMINI_API_KEY'))
+        gemini_recommender = None
+        print("[INFO] Gemini Recommender temporarily disabled (Python 3.14 compatibility)")
+    except Exception as e:
+        print(f"[ERROR] Gemini Recommender initialization failed: {str(e)}")
+        gemini_recommender = None
+    # Initialize progress tracker with Gemini recommender
+    progress_tracker = ProgressTracker(db, github_crawler, ai_detector, gemini_recommender)
+    print("[OK] Advanced analytics modules initialized")
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -1080,6 +1091,210 @@ async def get_notifications(current_user: dict = Depends(get_current_user)):
     notifications = await db.notifications.find({"user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
     return notifications
 
+# ==================== GEMINI AI RECOMMENDATIONS ====================
+
+@api_router.post("/recommendations/progress/{student_id}/{project_id}")
+async def get_progress_recommendations(
+    student_id: str,
+    project_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get AI-powered progress recommendations using Gemini API
+    """
+    if not gemini_recommender:
+        raise HTTPException(status_code=503, detail="Gemini recommender not available")
+    
+    # Fetch project data
+    project = await db.projects.find_one({"id": project_id, "student_id": student_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Fetch progress data
+    progress = await db.progress_snapshots.find_one(
+        {"project_id": project_id, "student_id": student_id},
+        sort=[("timestamp", -1)]
+    )
+    
+    if not progress:
+        raise HTTPException(status_code=404, detail="Progress data not found")
+    
+    # Get Gemini recommendations
+    recommendations = await gemini_recommender.get_progress_recommendations(
+        student_id=student_id,
+        project_data=project,
+        progress_status=progress.get("status", "unknown"),
+        risk_level=progress.get("risk_level", "low"),
+        github_data=progress.get("github_data", {}),
+        milestone_data=progress.get("milestone_data", {})
+    )
+    
+    return recommendations
+
+@api_router.post("/recommendations/learning")
+async def get_learning_recommendations(
+    request_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get personalized learning path recommendations using Gemini API
+    
+    Request body:
+    {
+        "skills": ["Python", "JavaScript"],
+        "current_level": "intermediate",
+        "goal": "Learn web development",
+        "project_type": "web"
+    }
+    """
+    if not gemini_recommender:
+        raise HTTPException(status_code=503, detail="Gemini recommender not available")
+    
+    recommendations = await gemini_recommender.get_learning_recommendations(
+        student_id=current_user["id"],
+        skills=request_data.get("skills", []),
+        current_level=request_data.get("current_level", "beginner"),
+        goal=request_data.get("goal", ""),
+        project_type=request_data.get("project_type", "general")
+    )
+    
+    return recommendations
+
+@api_router.post("/recommendations/technical/{project_id}")
+async def get_technical_recommendations(
+    project_id: str,
+    request_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get technical improvement recommendations using Gemini API
+    
+    Request body:
+    {
+        "code_quality_score": 65.5,
+        "issues": ["Poor error handling", "No unit tests"],
+        "technology_stack": ["Python", "Flask", "PostgreSQL"]
+    }
+    """
+    if not gemini_recommender:
+        raise HTTPException(status_code=503, detail="Gemini recommender not available")
+    
+    # Fetch project data
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    recommendations = await gemini_recommender.get_technical_recommendations(
+        project_data=project,
+        code_quality_score=request_data.get("code_quality_score", 0),
+        issues=request_data.get("issues", []),
+        technology_stack=request_data.get("technology_stack", [])
+    )
+    
+    return recommendations
+
+@api_router.post("/recommendations/career")
+async def get_career_recommendations(
+    request_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get career guidance recommendations using Gemini API
+    
+    Request body:
+    {
+        "skills": ["Python", "JavaScript", "Data Analysis"],
+        "interests": ["Web Development", "AI/ML"],
+        "projects": [...]
+    }
+    """
+    if not gemini_recommender:
+        raise HTTPException(status_code=503, detail="Gemini recommender not available")
+    
+    # Fetch student projects
+    projects = await db.projects.find({"student_id": current_user["id"]}).to_list(length=50)
+    
+    recommendations = await gemini_recommender.get_career_recommendations(
+        student_data=current_user,
+        skills=request_data.get("skills", []),
+        interests=request_data.get("interests", []),
+        projects=projects
+    )
+    
+    return recommendations
+
+@api_router.post("/recommendations/peer-matching")
+async def get_peer_matching_recommendations(
+    request_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get peer collaboration recommendations using Gemini API
+    
+    Request body:
+    {
+        "skills": ["Python", "JavaScript"],
+        "interests": ["Web Development"]
+    }
+    """
+    if not gemini_recommender:
+        raise HTTPException(status_code=503, detail="Gemini recommender not available")
+    
+    # Fetch all other students
+    all_students = await db.users.find(
+        {"role": "student", "id": {"$ne": current_user["id"]}}
+    ).to_list(length=100)
+    
+    recommendations = await gemini_recommender.get_peer_matching_recommendations(
+        student_id=current_user["id"],
+        student_skills=request_data.get("skills", []),
+        student_interests=request_data.get("interests", []),
+        all_students=all_students
+    )
+    
+    return recommendations
+
+@api_router.post("/recommendations/mentor-guidance/{student_id}")
+async def get_mentor_guidance(
+    student_id: str,
+    request_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get mentor guidance recommendations using Gemini API
+    
+    Request body:
+    {
+        "project_id": "proj_123",
+        "challenges": ["Time management", "Code quality"],
+        "progress_data": {...}
+    }
+    """
+    if not gemini_recommender:
+        raise HTTPException(status_code=503, detail="Gemini recommender not available")
+    
+    # Verify user is mentor or admin
+    if current_user["role"] not in ["mentor", "admin"]:
+        raise HTTPException(status_code=403, detail="Only mentors and admins can access this")
+    
+    # Fetch project data
+    project_id = request_data.get("project_id")
+    project = await db.projects.find_one({"id": project_id, "student_id": student_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Fetch progress data
+    progress = request_data.get("progress_data", {})
+    
+    recommendations = await gemini_recommender.get_mentor_guidance(
+        student_id=student_id,
+        project_data=project,
+        challenges=request_data.get("challenges", []),
+        progress_data=progress
+    )
+    
+    return recommendations
+
 # ==================== WEBSOCKET FOR REAL-TIME CHAT ====================
 
 class ConnectionManager:
@@ -1462,14 +1677,32 @@ async def bulk_progress_check(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/admin/users")
+async def get_all_users(
+    role: Optional[str] = None,
+    current_user: dict = Depends(get_admin_user)
+):
+    """Get all users (admin only) - optionally filtered by role"""
+    try:
+        query = {}
+        if role:
+            query["role"] = role
+        users = await db.users.find(query, {"_id": 0, "password": 0}).to_list(length=1000)
+        return {"users": users}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Project Management with AI Detection
 class ProjectCreate(BaseModel):
+    student_id: Optional[str] = None  # For mentor/admin assigning to students
     title: str
     description: str
     github_url: Optional[str] = None
     start_date: str
     end_date: str
     duration_weeks: int = 12
+    difficulty_level: Optional[str] = "intermediate"
+    technologies: Optional[List[str]] = []
     milestones: List[Dict[str, Any]] = []
 
 @api_router.post("/projects/create")
@@ -1480,17 +1713,25 @@ async def create_project(
     """Create a new project for tracking"""
     project_id = str(uuid.uuid4())
     
+    # If student_id is provided and user is mentor/admin, assign to that student
+    # Otherwise, assign to current user (student creating their own project)
+    assigned_student_id = project.student_id if (project.student_id and current_user["role"] in ["mentor", "admin"]) else current_user["id"]
+    
     project_doc = {
         "id": project_id,
-        "student_id": current_user["id"],
+        "student_id": assigned_student_id,
         "title": project.title,
         "description": project.description,
         "github_url": project.github_url,
         "start_date": project.start_date,
         "end_date": project.end_date,
         "duration_weeks": project.duration_weeks,
+        "difficulty_level": project.difficulty_level,
+        "technologies": project.technologies,
         "milestones": project.milestones,
         "status": "active",
+        "assigned_by": current_user["id"],
+        "assigned_at": datetime.now(timezone.utc).isoformat(),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "flagged": False,
         "red_flags": []
@@ -1499,6 +1740,28 @@ async def create_project(
     await db.projects.insert_one(project_doc)
     
     return {"message": "Project created successfully", "project_id": project_id, "project": project_doc}
+
+@api_router.get("/admin/projects")
+async def get_all_projects(
+    current_user: dict = Depends(get_admin_user)
+):
+    """Get all projects (admin only)"""
+    try:
+        projects = await db.projects.find({}).to_list(length=1000)
+        return {"projects": projects}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/mentor/projects")
+async def get_mentor_projects(
+    current_user: dict = Depends(get_mentor_user)
+):
+    """Get projects assigned by mentor"""
+    try:
+        projects = await db.projects.find({"assigned_by": current_user["id"]}).to_list(length=1000)
+        return {"projects": projects}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/projects/student/{student_id}")
 async def get_student_projects(

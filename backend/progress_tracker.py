@@ -37,12 +37,14 @@ class ProgressTracker:
     - Tracks milestone completion
     - Generates automated reports
     - Sends alerts for delays
+    - Integrates AI recommendations via Gemini
     """
     
-    def __init__(self, db, github_crawler, ai_detector):
+    def __init__(self, db, github_crawler, ai_detector, gemini_recommender=None):
         self.db = db
         self.github_crawler = github_crawler
         self.ai_detector = ai_detector
+        self.gemini_recommender = gemini_recommender
     
     async def check_project_progress(self, student_id: str, project_id: str) -> Dict[str, Any]:
         """
@@ -489,6 +491,10 @@ class ProgressTracker:
         
         if not recommendations:
             recommendations.append("✓ Project on track - maintain current pace")
+        
+        # Add Gemini AI recommendation flag
+        if self.gemini_recommender:
+            recommendations.append("💡 GET AI INSIGHTS: Use /api/recommendations/progress endpoint for detailed AI analysis")
         
         return recommendations
     

@@ -230,12 +230,20 @@ const MentorDashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Link to="/mentees">
           <Card className="glass-card hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer">
             <CardContent className="p-4 flex items-center gap-3">
               <Users className="h-5 w-5 text-primary" />
               <span className="font-medium text-sm">View Mentees</span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/assign-project">
+          <Card className="glass-card hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-3">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              <span className="font-medium text-sm">Assign Project</span>
             </CardContent>
           </Card>
         </Link>

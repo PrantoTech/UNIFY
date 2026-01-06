@@ -35,6 +35,7 @@ import Appointments from './pages/mentor/Appointments';
 import Mentees from './pages/mentor/Mentees';
 
 import Analytics from './pages/Analytics';
+import AssignProject from './pages/AssignProject';
 
 import './App.css';
 
@@ -189,6 +190,13 @@ function AppRoutes() {
       <Route path="/analytics" element={
         <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <Analytics />
+        </ProtectedRoute>
+      } />
+
+      {/* Project Assignment Route (Mentor & Admin) */}
+      <Route path="/assign-project" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <AssignProject />
         </ProtectedRoute>
       } />
 
