@@ -34,6 +34,8 @@ import MentorNotes from './pages/mentor/MentorNotes';
 import Appointments from './pages/mentor/Appointments';
 import Mentees from './pages/mentor/Mentees';
 
+import Analytics from './pages/Analytics';
+
 import './App.css';
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -180,6 +182,13 @@ function AppRoutes() {
       <Route path="/mentoring" element={
         <ProtectedRoute allowedRoles={['student']}>
           <Mentoring />
+        </ProtectedRoute>
+      } />
+
+      {/* Analytics Route (Mentor & Admin) */}
+      <Route path="/analytics" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <Analytics />
         </ProtectedRoute>
       } />
 

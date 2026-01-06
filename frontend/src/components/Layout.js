@@ -46,6 +46,7 @@ const Layout = ({ children }) => {
 
   const mentorMenuItems = [
     { icon: Home, label: 'Dashboard', path: '/mentor-dashboard' },
+    { icon: BarChart3, label: 'Analytics', path: '/analytics' },
     { icon: Users, label: 'My Mentees', path: '/mentees' },
     { icon: Calendar, label: 'Appointments', path: '/appointments' },
     { icon: FileText, label: 'Notes', path: '/mentor-notes' },

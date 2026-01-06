@@ -16,6 +16,12 @@ import json
 import hashlib
 import base64
 
+# Import new modules
+from github_crawler import GitHubCrawler
+from linkedin_crawler import LinkedInCrawler
+from ai_detector import AIContentDetector
+from progress_tracker import ProgressTracker
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -94,6 +100,12 @@ security = HTTPBearer()
 
 app = FastAPI(title="UNIFY - Smart Campus Platform")
 api_router = APIRouter(prefix="/api")
+
+# Initialize new modules
+github_crawler = GitHubCrawler(github_token=os.environ.get('GITHUB_TOKEN'))
+linkedin_crawler = LinkedInCrawler(api_key=os.environ.get('LINKEDIN_API_KEY'))
+ai_detector = AIContentDetector(db)
+progress_tracker = None  # Will be initialized after db is ready
 
 # ==================== MODELS ====================
 
@@ -378,7 +390,11 @@ async def seed_test_data():
 @app.on_event("startup")
 async def startup_event():
     """Initialize app on startup"""
+    global progress_tracker
     await seed_test_data()
+    # Initialize progress tracker
+    progress_tracker = ProgressTracker(db, github_crawler, ai_detector)
+    print("✓ Advanced analytics modules initialized")
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -1290,6 +1306,216 @@ async def seed_database():
 @api_router.get("/")
 async def root():
     return {"message": "UNIFY Smart Campus Platform API"}
+
+# ==================== NEW ADVANCED FEATURES ====================
+
+# GitHub Crawler Endpoints
+@api_router.post("/analytics/github/analyze/{username}")
+async def analyze_github_profile(
+    username: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Analyze a student's GitHub profile for authenticity and quality"""
+    try:
+        analysis = await github_crawler.analyze_student_profile(username)
+        return analysis
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/analytics/github/compare")
+async def compare_github_repos(
+    username1: str,
+    username2: str,
+    current_user: dict = Depends(get_admin_user)
+):
+    """Compare two students' GitHub repositories for similarity"""
+    try:
+        comparison = await github_crawler.compare_student_repos(username1, username2)
+        return comparison
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# LinkedIn Crawler Endpoints
+@api_router.post("/analytics/linkedin/analyze")
+async def analyze_linkedin_profile(
+    profile_url: str,
+    student_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Analyze LinkedIn profile for authenticity and anomalies"""
+    try:
+        # Get user data if student_id provided
+        user_data = None
+        if student_id:
+            user = await db.users.find_one({"id": student_id})
+            if user:
+                user_data = {
+                    "name": user.get("name"),
+                    "institution": user.get("department"),
+                    "location": ""
+                }
+        
+        analysis = await linkedin_crawler.analyze_profile(profile_url, user_data)
+        return analysis
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/analytics/linkedin/batch-analyze")
+async def batch_analyze_linkedin(
+    profile_urls: List[str],
+    current_user: dict = Depends(get_admin_user)
+):
+    """Analyze multiple LinkedIn profiles in batch"""
+    try:
+        results = await linkedin_crawler.batch_analyze_profiles(profile_urls)
+        return {"results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# AI Detection Endpoints
+class AIDetectionRequest(BaseModel):
+    student_id: str
+    project_id: str
+    content: str
+    content_type: str = "code"  # code or text
+
+@api_router.post("/ai-detection/analyze")
+async def detect_ai_content(
+    request: AIDetectionRequest,
+    current_user: dict = Depends(get_mentor_user)
+):
+    """
+    Detect AI-generated content in student submissions
+    Automatically red-flags and cancels projects with high AI confidence
+    """
+    try:
+        detection_result = await ai_detector.analyze_submission(
+            student_id=request.student_id,
+            project_id=request.project_id,
+            content=request.content,
+            content_type=request.content_type
+        )
+        return detection_result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/ai-detection/student/{student_id}")
+async def get_student_ai_history(
+    student_id: str,
+    current_user: dict = Depends(get_mentor_user)
+):
+    """Get AI detection history for a student"""
+    try:
+        history = await ai_detector.get_student_ai_history(student_id)
+        return history
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Progress Tracking Endpoints
+@api_router.post("/progress/check/{student_id}/{project_id}")
+async def check_project_progress(
+    student_id: str,
+    project_id: str,
+    current_user: dict = Depends(get_mentor_user)
+):
+    """Run automated progress check for a student project"""
+    global progress_tracker
+    if not progress_tracker:
+        progress_tracker = ProgressTracker(db, github_crawler, ai_detector)
+    
+    try:
+        progress = await progress_tracker.check_project_progress(student_id, project_id)
+        return progress
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/progress/report/{student_id}")
+async def get_progress_report(
+    student_id: str,
+    project_id: Optional[str] = None,
+    current_user: dict = Depends(get_mentor_user)
+):
+    """Generate comprehensive progress report for student"""
+    global progress_tracker
+    if not progress_tracker:
+        progress_tracker = ProgressTracker(db, github_crawler, ai_detector)
+    
+    try:
+        report = await progress_tracker.generate_progress_report(student_id, project_id)
+        return report
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/progress/bulk-check")
+async def bulk_progress_check(
+    student_ids: List[str],
+    current_user: dict = Depends(get_admin_user)
+):
+    """Check progress for multiple students in parallel"""
+    global progress_tracker
+    if not progress_tracker:
+        progress_tracker = ProgressTracker(db, github_crawler, ai_detector)
+    
+    try:
+        results = await progress_tracker.bulk_progress_check(student_ids)
+        return {"results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Project Management with AI Detection
+class ProjectCreate(BaseModel):
+    title: str
+    description: str
+    github_url: Optional[str] = None
+    start_date: str
+    end_date: str
+    duration_weeks: int = 12
+    milestones: List[Dict[str, Any]] = []
+
+@api_router.post("/projects/create")
+async def create_project(
+    project: ProjectCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new project for tracking"""
+    project_id = str(uuid.uuid4())
+    
+    project_doc = {
+        "id": project_id,
+        "student_id": current_user["id"],
+        "title": project.title,
+        "description": project.description,
+        "github_url": project.github_url,
+        "start_date": project.start_date,
+        "end_date": project.end_date,
+        "duration_weeks": project.duration_weeks,
+        "milestones": project.milestones,
+        "status": "active",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "flagged": False,
+        "red_flags": []
+    }
+    
+    await db.projects.insert_one(project_doc)
+    
+    return {"message": "Project created successfully", "project_id": project_id, "project": project_doc}
+
+@api_router.get("/projects/student/{student_id}")
+async def get_student_projects(
+    student_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all projects for a student"""
+    projects = await db.projects.find({"student_id": student_id}).to_list(length=100)
+    return {"projects": projects}
+
+@api_router.get("/students/flagged")
+async def get_flagged_students(
+    current_user: dict = Depends(get_admin_user)
+):
+    """Get all students with red flags"""
+    students = await db.students.find({"flagged": True}).to_list(length=100)
+    return {"flagged_students": students}
 
 # Include router
 app.include_router(api_router)
