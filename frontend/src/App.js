@@ -5,16 +5,13 @@ import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from './components/ui/sonner';
 import Layout from './components/Layout';
 
-// Auth Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
 
-// Dashboard Pages
 import StudentDashboard from './pages/StudentDashboard';
 import MentorDashboard from './pages/MentorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 
-// Student Pages
 import CampusConnect from './pages/CampusConnect';
 import Clubs from './pages/Clubs';
 import Chat from './pages/Chat';
@@ -28,20 +25,17 @@ import LostFound from './pages/LostFound';
 import Complaints from './pages/Complaints';
 import Feedback from './pages/Feedback';
 
-// Admin Pages
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageNotices from './pages/admin/ManageNotices';
 import ManageComplaints from './pages/admin/ManageComplaints';
 import ViewFeedback from './pages/admin/ViewFeedback';
 
-// Mentor Pages
 import MentorNotes from './pages/mentor/MentorNotes';
 import Appointments from './pages/mentor/Appointments';
 import Mentees from './pages/mentor/Mentees';
 
 import './App.css';
 
-// Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { user, loading } = useAuth();
 
@@ -72,7 +66,6 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   return <Layout>{children}</Layout>;
 };
 
-// Public Route (redirect if logged in)
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
 

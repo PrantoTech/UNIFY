@@ -64,7 +64,6 @@ const Chat = () => {
       ws.onclose = () => {
         setConnected(false);
         console.log('WebSocket disconnected');
-        // Reconnect after 3 seconds
         setTimeout(connectWebSocket, 3000);
       };
 
@@ -125,11 +124,9 @@ const Chat = () => {
       group_id: selectedUser ? null : 'campus-general',
     };
 
-    // Send via WebSocket if connected
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(messageData));
     } else {
-      // Fallback to HTTP
       try {
         await axios.post(`${API}/chat/messages`, messageData);
         if (selectedUser) {

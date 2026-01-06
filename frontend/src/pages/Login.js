@@ -30,7 +30,6 @@ const Login = () => {
   }, [user]);
 
   useEffect(() => {
-    // Seed database on first load
     const seedDB = async () => {
       try {
         setSeeding(true);

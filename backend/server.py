@@ -13,14 +13,75 @@ from datetime import datetime, timezone, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 import json
+import hashlib
+import base64
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# ==================== MOCK DATABASE ====================
+class MockDatabase:
+    """In-memory mock database for development/testing"""
+    def __init__(self):
+        self.collections = {}
+    
+    def __getattr__(self, name):
+        if name not in self.collections:
+            self.collections[name] = MockCollection()
+        return self.collections[name]
+
+class MockCollection:
+    """Mock MongoDB collection using in-memory storage"""
+    def __init__(self):
+        self.data = []
+    
+    async def find_one(self, query, projection=None):
+        for item in self.data:
+            if self._matches_query(item, query):
+                if projection:
+                    return {k: v for k, v in item.items() if k in projection or projection.get(k) == 1}
+                return item
+        return None
+    
+    async def find(self, query=None):
+        if not query:
+            return self.data
+        return [item for item in self.data if self._matches_query(item, query)]
+    
+    async def insert_one(self, document):
+        self.data.append(document)
+        return document
+    
+    async def update_one(self, query, update):
+        for i, item in enumerate(self.data):
+            if self._matches_query(item, query):
+                self.data[i].update(update.get("$set", update))
+                return item
+        return None
+    
+    async def delete_one(self, query):
+        for i, item in enumerate(self.data):
+            if self._matches_query(item, query):
+                del self.data[i]
+                return True
+        return False
+    
+    def _matches_query(self, item, query):
+        for key, value in query.items():
+            if item.get(key) != value:
+                return False
+        return True
+
+# MongoDB connection - with fallback to mock database
+db = None
+try:
+    mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000)
+    db = client[os.environ.get('DB_NAME', 'unify_campus')]
+except Exception as e:
+    print(f"Warning: MongoDB connection failed: {e}")
+    print("Using in-memory mock database for development")
+    db = MockDatabase()
 
 # JWT Configuration
 SECRET_KEY = os.environ.get('JWT_SECRET', 'unify-campus-secret-key-2025')
@@ -144,6 +205,181 @@ class ChatMessage(BaseModel):
 class MentorPairingCreate(BaseModel):
     mentee_id: str
 
+# ==================== MOCK DATABASE FOR DEVELOPMENT ====================
+
+class MockCollection:
+    def __init__(self):
+        self.data = {}
+        self._filter_query = None
+        self._sort_field = None
+        self._sort_direction = 1
+        self._projection = None
+    
+    async def find_one(self, query, projection=None):
+        for doc in self.data.values():
+            match = all(doc.get(k) == v for k, v in query.items())
+            if match:
+                if projection:
+                    return {k: v for k, v in doc.items() if k in projection or projection.get(k, 1) == 1}
+                return doc
+        return None
+    
+    async def insert_one(self, doc):
+        doc_id = doc.get("id", str(uuid.uuid4()))
+        self.data[doc_id] = doc
+        return doc_id
+    
+    async def insert_many(self, docs):
+        result_ids = []
+        for doc in docs:
+            doc_id = doc.get("id", str(uuid.uuid4()))
+            self.data[doc_id] = doc
+            result_ids.append(doc_id)
+        return result_ids
+    
+    def find(self, query=None, projection=None):
+        self._filter_query = query or {}
+        self._projection = projection
+        return self
+    
+    def sort(self, field, direction):
+        self._sort_field = field
+        self._sort_direction = direction
+        return self
+    
+    async def to_list(self, limit=None):
+        results = [doc for doc in self.data.values() if all(doc.get(k) == v for k, v in self._filter_query.items())]
+        
+        if self._sort_field:
+            reverse = self._sort_direction == -1
+            results = sorted(results, key=lambda x: x.get(self._sort_field, ''), reverse=reverse)
+        
+        if limit:
+            results = results[:limit]
+        
+        if self._projection:
+            results = [{k: v for k, v in doc.items() if k in self._projection or self._projection.get(k, 1) == 1} for doc in results]
+        
+        return results
+    
+    async def update_one(self, query, update):
+        for doc in self.data.values():
+            if all(doc.get(k) == v for k, v in query.items()):
+                if "$set" in update:
+                    for key, val in update["$set"].items():
+                        doc[key] = val
+                elif "$push" in update:
+                    for key, val in update["$push"].items():
+                        if key not in doc:
+                            doc[key] = []
+                        if isinstance(doc[key], list):
+                            doc[key].append(val)
+                elif "$pull" in update:
+                    for key, val in update["$pull"].items():
+                        if key in doc and isinstance(doc[key], list):
+                            doc[key] = [v for v in doc[key] if v != val]
+                elif "$inc" in update:
+                    for key, val in update["$inc"].items():
+                        doc[key] = doc.get(key, 0) + val
+                return doc
+        return None
+    
+    async def delete_one(self, query):
+        for doc_id, doc in list(self.data.items()):
+            if all(doc.get(k) == v for k, v in query.items()):
+                del self.data[doc_id]
+                return doc_id
+        return None
+    
+    async def delete_many(self, query):
+        deleted_ids = []
+        for doc_id, doc in list(self.data.items()):
+            if all(doc.get(k) == v for k, v in query.items()):
+                del self.data[doc_id]
+                deleted_ids.append(doc_id)
+        return deleted_ids
+
+
+class MockDB:
+    def __init__(self):
+        self.users = MockCollection()
+        self.posts = MockCollection()
+        self.comments = MockCollection()
+        self.clubs = MockCollection()
+        self.notices = MockCollection()
+        self.events = MockCollection()
+        self.chat_messages = MockCollection()
+        self.complaints = MockCollection()
+        self.feedback = MockCollection()
+        self.library_books = MockCollection()
+        self.transport = MockCollection()
+        self.mentor_pairings = MockCollection()
+        self.lost_found = MockCollection()
+        self.canteen_menu = MockCollection()
+        self.toto_drivers = MockCollection()
+
+# Use mock database if MongoDB is not available
+if db is None:
+    db = MockDB()
+
+# Seed test data for mock database
+async def seed_test_data():
+    """Add test users to mock database on startup"""
+    if isinstance(db, MockDB):
+        # Check if users already exist
+        existing_users = await db.users.find({}).to_list(1)
+        if len(existing_users) == 0:
+            # Import here to avoid circular dependency
+            test_users = [
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": "Admin User",
+                    "email": "admin@campus.edu",
+                    "password": pwd_context.hash("admin123"),
+                    "role": "admin",
+                    "registration_no": "ADM001",
+                    "mobile": "9876543210",
+                    "department": "Administration",
+                    "year": None,
+                    "profile_image": None,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                },
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": "John Doe",
+                    "email": "john@campus.edu",
+                    "password": pwd_context.hash("john123"),
+                    "role": "student",
+                    "registration_no": "STU001",
+                    "mobile": "9123456789",
+                    "department": "Computer Science",
+                    "year": "3",
+                    "profile_image": None,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                },
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": "Jane Smith",
+                    "email": "jane@campus.edu",
+                    "password": pwd_context.hash("jane123"),
+                    "role": "mentor",
+                    "registration_no": "MEN001",
+                    "mobile": "9234567890",
+                    "department": "Computer Science",
+                    "year": None,
+                    "profile_image": None,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+            ]
+            for user in test_users:
+                await db.users.insert_one(user)
+            print("✓ Test data seeded successfully")
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize app on startup"""
+    await seed_test_data()
+
 # ==================== HELPER FUNCTIONS ====================
 
 def create_access_token(data: dict):
@@ -153,10 +389,13 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    # Use SHA256 for password hashing (simple but effective)
+    password_hash = hashlib.sha256(plain_password.encode()).hexdigest()
+    return password_hash == hashed_password
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    # Use SHA256 for password hashing (simple but effective)
+    return hashlib.sha256(password.encode()).hexdigest()
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
@@ -1068,4 +1307,21 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client is not None:
+        client.close()
+if __name__ == "__main__":
+    import uvicorn
+    import sys
+    try:
+        config = uvicorn.Config(app, host="0.0.0.0", port=8001, log_level="info")
+        server = uvicorn.Server(config)
+        import asyncio
+        asyncio.run(server.serve())
+    except KeyboardInterrupt:
+        print("Server stopped by user")
+        sys.exit(0)
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
