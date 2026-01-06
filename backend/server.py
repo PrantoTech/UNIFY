@@ -52,8 +52,8 @@ class MockCollection:
     
     async def find(self, query=None):
         if not query:
-            return self.data
-        return [item for item in self.data if self._matches_query(item, query)]
+            return MockCursor(self.data)
+        return MockCursor([item for item in self.data if self._matches_query(item, query)])
     
     async def insert_one(self, document):
         self.data.append(document)
@@ -78,6 +78,14 @@ class MockCollection:
             if item.get(key) != value:
                 return False
         return True
+
+class MockCursor:
+    """Mock MongoDB cursor for chaining queries"""
+    def __init__(self, data):
+        self.data = data
+    
+    async def to_list(self, length):
+        return self.data[:length] if length else self.data
 
 # MongoDB connection - with fallback to mock database
 db = None
@@ -339,7 +347,7 @@ if db is None:
 # Seed test data for mock database
 async def seed_test_data():
     """Add test users to mock database on startup"""
-    if isinstance(db, MockDB):
+    if isinstance(db, MockDatabase):
         # Check if users already exist
         existing_users = await db.users.find({}).to_list(1)
         if len(existing_users) == 0:
@@ -1680,9 +1688,9 @@ async def bulk_progress_check(
 @api_router.get("/admin/users")
 async def get_all_users(
     role: Optional[str] = None,
-    current_user: dict = Depends(get_admin_user)
+    current_user: dict = Depends(get_mentor_user)
 ):
-    """Get all users (admin only) - optionally filtered by role"""
+    """Get all users (mentor/admin) - optionally filtered by role"""
     try:
         query = {}
         if role:
@@ -1743,9 +1751,9 @@ async def create_project(
 
 @api_router.get("/admin/projects")
 async def get_all_projects(
-    current_user: dict = Depends(get_admin_user)
+    current_user: dict = Depends(get_mentor_user)
 ):
-    """Get all projects (admin only)"""
+    """Get all projects (mentor/admin)"""
     try:
         projects = await db.projects.find({}).to_list(length=1000)
         return {"projects": projects}
